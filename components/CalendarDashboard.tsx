@@ -85,7 +85,7 @@ export default function CalendarDashboard() {
 
   async function handleAddAppointment(e: any) {
     e.preventDefault();
-    if (!newPatientName) return alert("يرجى إدخال اسم المريضة");
+    if (!newPatientName) return alert("يرجى إدخال اسم المريض");
 
     const appointmentsToInsert = multiDates.map(dateTime => ({
       patient_name: newPatientName,
@@ -107,11 +107,11 @@ export default function CalendarDashboard() {
   }
 
   async function approveBooking(id: number, status: string) {
-    await supabase.from('appointments').update({ status }).eq('id', id);
-    fetchAppointments();
+    const { error } = await supabase.from('appointments').update({ status }).eq('id', id);
+    if (!error) fetchAppointments();
   }
 
-  // == التعديل الجذري والحل النهائي لمشكلة المخزون ==
+  // الدالة المعدلة التي تحل مشكلة المخزون والنقاط
   const updateAppointmentStatus = async (id: number, targetStatus: string) => {
     const currentApt = appointments.find(a => a.id === id);
     let finalStatus = targetStatus;
@@ -145,25 +145,16 @@ export default function CalendarDashboard() {
           await supabase.from('patients').update({ loyalty_points: newPoints, last_visit: todayStr }).eq('id', patient.id);
         }
         
-        // 2. خصم المخزون بقوة ومباشرة من قاعدة البيانات لتفادي أي خطأ
+        // 2. خصم المخزون فقط إذا لم يكن الموعد مكتمل سابقاً
         if (selectedProduct && !(currentApt.status || '').includes('مكتمل')) {
-          try {
-            // جلب المنتج مباشرة من السيرفر للتأكد من الكمية الحالية
-            const { data: itemServer } = await supabase.from('inventory').select('id, stock').eq('product_name', selectedProduct).single();
-            if (itemServer && itemServer.stock > 0) {
-               await supabase.from('inventory').update({ stock: itemServer.stock - 1 }).eq('id', itemServer.id);
-               console.log("تم خصم المخزون بنجاح!");
-            }
-          } catch(err) {
-            console.error("خطأ في خصم المخزون:", err);
+          const item = inventory.find(i => i.product_name === selectedProduct);
+          if (item && item.stock > 0) {
+             await supabase.from('inventory').update({ stock: item.stock - 1 }).eq('id', item.id);
           }
         }
       }
-      
-      // التحديث الفوري للواجهة
-      await fetchAppointments();
-      await fetchInventory();
-      
+      fetchAppointments();
+      fetchInventory();
       setEditingId(null); setNoteText(''); setPrice(''); setSelectedProduct(''); setNewDate(''); setNewTime('');
     } else alert("حدث خطأ أثناء التحديث");
   };
@@ -211,6 +202,7 @@ export default function CalendarDashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
           
+          {/* قسم طلبات الحجز الإلكتروني (عاد من جديد) */}
           {pendingBookings.length > 0 && (
             <div className="glass-card bg-yellow-50/80 dark:bg-yellow-900/30 border-yellow-200 dark:border-yellow-700/50 rounded-xl p-6 shadow-sm">
               <h3 className="text-yellow-800 dark:text-yellow-400 font-bold mb-4 flex items-center gap-2"><Bell className="animate-bounce" /> طلبات حجز إلكتروني ({pendingBookings.length})</h3>
@@ -232,6 +224,7 @@ export default function CalendarDashboard() {
             </div>
           )}
 
+          {/* الإحصائيات المالية بالتصميم الفخم */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="glass-card p-5 rounded-[2rem] relative overflow-hidden group">
               <div className="absolute top-0 right-0 w-2 h-full bg-green-400"></div>
@@ -286,11 +279,13 @@ export default function CalendarDashboard() {
               })}
             </div>
 
+            {/* الرسم البياني الدائري (عاد من جديد) */}
             <div className="flex items-center justify-between border-b dark:border-slate-700 pb-4 mb-6">
               <h3 className="font-bold text-gray-800 dark:text-white text-lg">تحليل أداء الشهر ({completedCount} جلسة)</h3>
               <div className="w-20 h-20 rounded-full shadow-inner border-2 border-white dark:border-slate-800" style={pieChartStyle}></div>
             </div>
 
+            {/* الجدول الشهري للمواعيد (عاد من جديد) */}
             <div className="overflow-x-auto">
               <table className="w-full text-sm text-right">
                 <thead><tr className="bg-gray-50/50 dark:bg-slate-800 text-gray-500 dark:text-gray-300"><th className="p-4 rounded-r-xl">المريض</th><th className="p-4">الحالة</th><th className="p-4">المبلغ</th><th className="p-4 rounded-l-xl">الوصفة</th></tr></thead>
@@ -307,6 +302,7 @@ export default function CalendarDashboard() {
           </div>
         </div>
 
+        {/* المواعيد اليومية (القسم الأيسر) */}
         <div className="glass-card rounded-[2rem] p-6 h-fit text-right shadow-sm">
           <div className="flex justify-between items-center mb-6 border-b border-gray-100 dark:border-slate-700 pb-3">
             <h2 className="text-lg font-black text-gray-800 dark:text-white">مواعيد {selectedDate}</h2>
@@ -317,7 +313,7 @@ export default function CalendarDashboard() {
             <form onSubmit={handleAddAppointment} className="mb-6 bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-inner border border-gray-100 dark:border-slate-700 space-y-4">
               <input type="text" list="patients-list" required placeholder="اسم المريضة..." value={newPatientName} onChange={e => setNewPatientName(e.target.value)} className="w-full p-3 text-sm border border-gray-200 dark:border-slate-700 rounded-xl outline-none bg-transparent" />
               <datalist id="patients-list">{patientsList.map(p => <option key={p.id} value={p.full_name} />)}</datalist>
-              <select value={newTreatmentType} onChange={e => setNewTreatmentType(e.target.value)} className="w-full p-3 text-sm border border-gray-200 dark:border-slate-700 rounded-xl outline-none bg-transparent"><option>تنظيف بشرة عميق</option><option>خليل</option><option>تقشير كيميائي</option><option>استشارة</option><option>مراجعة</option></select>
+              <select value={newTreatmentType} onChange={e => setNewTreatmentType(e.target.value)} className="w-full p-3 text-sm border border-gray-200 dark:border-slate-700 rounded-xl outline-none bg-transparent"><option>تنظيف بشرة عميق</option><option>جلسة ليزر</option><option>تقشير كيميائي</option><option>استشارة</option><option>مراجعة</option></select>
               <div className="bg-gray-50 dark:bg-slate-900 p-3 rounded-xl space-y-3">
                 {multiDates.map((dateTime, index) => (
                   <div key={index} className="flex gap-2 items-center">
