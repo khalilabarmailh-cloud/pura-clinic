@@ -1,0 +1,42 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-slate-50 text-slate-900 transition-colors duration-300 m-0 p-0 overflow-hidden;
+  }
+  .dark body {
+    @apply bg-slate-900 text-slate-100;
+  }
+}
+
+/* الكارت الزجاجي (Glassmorphism) */
+.glass-card {
+  @apply bg-white/70 backdrop-blur-xl border border-white/40 shadow-sm transition-all duration-300;
+}
+.dark .glass-card {
+  @apply bg-slate-800/60 border-slate-700/50 shadow-xl;
+}
+
+/* التعديل التلقائي لألوان الخطوط في الوضع الليلي */
+.dark .text-gray-900, 
+.dark .text-gray-800, 
+.dark .text-gray-700, 
+.dark .text-gray-600 {
+  @apply text-slate-100 !important;
+}
+.dark .text-gray-500 {
+  @apply text-slate-400 !important;
+}
+
+/* إصلاح حقول الإدخال */
+.dark input, 
+.dark select, 
+.dark textarea {
+  @apply bg-slate-800 text-white border-slate-700 !important;
+}
+.dark input[type="date"]::-webkit-calendar-picker-indicator,
+.dark input[type="time"]::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+}
