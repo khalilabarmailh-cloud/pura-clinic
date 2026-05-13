@@ -1,0 +1,17 @@
+name: Keep Supabase Active
+
+on:
+  schedule:
+    # سيقوم هذا الأمر بتشغيل الوظيفة كل 3 أيام عند الساعة 12 ظهراً
+    - cron: '0 12 */3 * *'
+  workflow_dispatch: # يسمح لك بتشغيل الوظيفة يدوياً للتجربة
+
+jobs:
+  ping_db:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send Select Query to Supabase
+        run: |
+          curl -X GET "${{ secrets.SUPABASE_URL }}/rest/v1/patients?select=id&limit=1" \
+          -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
+          -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}"
